@@ -154,7 +154,11 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
                         openAnimate(childPosition);
                     }
                 } else {
-                    swapChoiceState(childPosition);
+                    if (swipeListView.getChoiceMode() != ListView.CHOICE_MODE_NONE) {
+                        swapChoiceState(childPosition);
+                    } else {
+                        //just do nothing
+                    }
                 }
                 return false;
             }
@@ -359,7 +363,9 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
     private void swapChoiceState(int position) {
         int lastCount = getCountSelected();
         boolean lastChecked = checked.get(position);
-        checked.set(position, !lastChecked);
+        if (swipeListView.getChoiceMode() != ListView.CHOICE_MODE_NONE) {
+            checked.set(position, !lastChecked);
+        }
         int count = lastChecked ? lastCount - 1 : lastCount + 1;
         if (lastCount == 0 && count == 1) {
             swipeListView.onChoiceStarted();
@@ -371,7 +377,9 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
             returnOldActions();
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            swipeListView.setItemChecked(position, !lastChecked);
+            if (swipeListView.getChoiceMode() != ListView.CHOICE_MODE_NONE) {
+                swipeListView.setItemChecked(position, !lastChecked);
+            }
         }
         swipeListView.onChoiceChanged(position, !lastChecked);
         reloadChoiceStateInView(frontView, position);
@@ -617,6 +625,11 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
                 moveTo = swapRight ? (int) (viewWidth - rightOffset) : (int) (-viewWidth + leftOffset);
             }
         }
+        final boolean aux = !opened.get(position);
+        if(swap) {
+            opened.set(position, aux);
+            openedRight.set(position, swapRight);
+        }
 
         animate(view)
                 .translationX(moveTo)
@@ -626,18 +639,36 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
                     public void onAnimationEnd(Animator animation) {
                         swipeListView.resetScrolling();
                         if (swap) {
-                            boolean aux = !opened.get(position);
                             opened.set(position, aux);
                             if (aux) {
                                 swipeListView.onOpened(position, swapRight);
-                                openedRight.set(position, swapRight);
                             } else {
                                 swipeListView.onClosed(position, openedRight.get(position));
                             }
                         }
-                        resetCell();
+                        if (aux || !swap) {
+                            resetCell();
+                        }
                     }
                 });
+    }
+    
+    /**
+     * Close all opened items
+     * Part of the fix done by AdrianOlar http://stackoverflow.com/questions/22604293/swipelistview-only-one-item-opened-at-a-time
+     */
+
+    void closeOtherOpenedItems() {
+        if (opened != null && downPosition != SwipeListView.INVALID_POSITION) {
+            int start = swipeListView.getFirstVisiblePosition();
+            int end = swipeListView.getLastVisiblePosition();
+            for (int i = start; i <= end; i++) {
+                if (opened.get(i) && i != downPosition) {
+                    closeAnimate(swipeListView.getChildAt(i - start).findViewById(swipeFrontView), i);
+                }
+            }
+        }
+
     }
 
     private void resetCell() {
@@ -794,6 +825,7 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
                         break;
                     }
                 }
+                closeOtherOpenedItems();
                 view.onTouchEvent(motionEvent);
                 return true;
             }
