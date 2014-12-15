@@ -542,6 +542,9 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
         if (swipeCurrentAction == SwipeListView.SWIPE_ACTION_CHOICE) {
             generateChoiceAnimate(view, position);
         }
+        if (swipeCurrentAction == SwipeListView.SWIPE_ACTION_NONE) {
+            generateRevealAnimate(view, false, false, position);
+        }
     }
 
     /**
@@ -1027,7 +1030,7 @@ public class SwipeListViewTouchListener implements View.OnTouchListener {
                     || (!swipingRight && deltaX > -DISPLACE_CHOICE)) {
                 setTranslationX(frontView, deltaX);
             }
-        } else {
+        } else if (swipeCurrentAction != SwipeListView.SWIPE_ACTION_NONE) {
             setTranslationX(frontView, deltaX);
         }
     }
